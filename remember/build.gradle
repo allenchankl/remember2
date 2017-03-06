@@ -1,11 +1,66 @@
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.3.0'
+//        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.4'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+plugins {
+    id "com.jfrog.bintray" version "1.5"
+}
+
+allprojects {
+    repositories {
+        jcenter()
+    }
+}
+
 apply plugin: 'com.android.library'
-apply plugin: 'maven'
+apply plugin: 'com.github.dcendents.android-maven'
+
+def versionMajor = 2
+def versionMinor = 0
+def versionPatch = 1
+def versionBuild = 0
+
+def version_code = versionMajor * 10000 + versionMinor * 1000 + versionPatch * 100 + versionBuild
+def version_name = "${versionMajor}.${versionMinor}.${versionPatch}"
 
 ext {
-    PUBLISH_GROUP_ID = 'com.mlapadula'
-    PUBLISH_ARTIFACT_ID = 'remember2'
-    PUBLISH_VERSION = '2.0.0'
+    bintrayRepo = 'android'
+    bintrayName = 'remember'
+
+    publishedGroupId = 'com.allenchankl'
+    libraryName = 'Remember'
+    artifact = 'remember'
+
+    libraryDescription = 'An in-memory data store backed by shared preferences, for Android.'
+
+    siteUrl = 'https://github.com/allenchankl/remember2'
+    gitUrl = 'https://github.com/allenchankl/remember2.git'
+    issueTrackerUrl = 'https://github.com/allenchankl/remember2/issues'
+
+    libraryVersion = version_name
+
+    developerId = 'allenchankl'
+    developerName = 'Allen Chan'
+    developerEmail = 'allen517@gmail.com'
+
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
 }
+
+group = publishedGroupId                               // Maven Group ID for the artifact
+version = version_name
 
 android {
     compileSdkVersion 25
@@ -14,8 +69,8 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 25
-        versionCode 2
-        versionName "2.0"
+        versionCode version_code
+        versionName version_name
     }
     buildTypes {
         release {
@@ -25,9 +80,58 @@ android {
     }
 }
 
-def groupId = project.PUBLISH_GROUP_ID
-def artifactId = project.PUBLISH_ARTIFACT_ID
-def version = project.PUBLISH_VERSION
+//////////////////
+// Maven
+//////////////////
+
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                groupId publishedGroupId
+                artifactId artifact
+                version version_name
+
+                // Add your description here
+                name libraryName
+                description libraryDescription
+                url siteUrl
+
+                // Set your license
+                licenses {
+                    license {
+                        name licenseName
+                        url licenseUrl
+                    }
+                }
+                developers {
+                    developer {
+                        id developerId
+                        name developerName
+                        email developerEmail
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+
+                }
+            }
+        }
+    }
+}
+
+////////////////////////
+// Bintray configuration
+////////////////////////
+
+//def groupId = project.PUBLISH_GROUP_ID
+//def artifactId = project.PUBLISH_ARTIFACT_ID
+//def version = project.PUBLISH_VERSION
+//version = libraryVersion
 
 def localReleaseDest = "${buildDir}/release/${version}"
 
@@ -47,32 +151,57 @@ task androidSourcesJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
 }
 
-uploadArchives {
-    repositories.mavenDeployer {
-        pom.groupId = groupId
-        pom.artifactId = artifactId
-        pom.version = version
-        // Add other pom properties here if you want (developer details / licenses)
-        repository(url: "file://${localReleaseDest}")
-    }
-}
-
-task zipRelease(type: Zip) {
-    from localReleaseDest
-    destinationDir buildDir
-    archiveName "release-${version}.zip"
-}
-
 task generateRelease << {
-    println "Release ${version} can be found at ${localReleaseDest}/"
-    println "Release ${version} zipped can be found ${buildDir}/release-${version}.zip"
+    println "Release ${libraryVersion} can be found at ${localReleaseDest}/"
+    println "Release ${libraryVersion} zipped can be found ${buildDir}/release-${libraryVersion}.zip"
 }
-
-generateRelease.dependsOn(uploadArchives)
-generateRelease.dependsOn(zipRelease)
-
 
 artifacts {
     archives androidSourcesJar
     archives androidJavadocsJar
+}
+
+// Bintray
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+bintray {
+    // First try to read from local.properties
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+    def gpgpassphrase = properties.getProperty("bintray.gpg.password")
+
+    // If the properties aren't set in a properties file, load from environment (needed for CI)
+    if (user == null) {
+        user = System.getenv('BINTRAY_USERNAME')
+    }
+    if (key == null) {
+        key = System.getenv('BINTRAY_APIKEY')
+    }
+    if (gpgpassphrase == null) {
+        gpgpassphrase = System.getenv('BINTRAY_GPG_PASSPHRASE')
+    }
+
+    configurations = ['archives']
+    pkg {
+        repo = bintrayRepo
+        name = bintrayName
+        desc = libraryDescription
+        websiteUrl = siteUrl
+        vcsUrl = siteUrl
+        licenses = allLicenses
+        libraryVersion = libraryVersion
+        publish = true
+        publicDownloadNumbers = true
+        version {
+            name = version_name
+            desc = libraryDescription
+            vcsTag = version_name
+            gpg {
+                sign = true //Determines whether to GPG sign the files. The default is false
+                passphrase = gpgpassphrase
+                //Optional. The passphrase for GPG signing'
+            }
+        }
+    }
 }
