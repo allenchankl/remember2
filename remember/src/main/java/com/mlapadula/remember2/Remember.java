@@ -160,12 +160,12 @@ public class Remember {
      * @return this instance
      */
     private <T> Remember saveAsync(final String key, final T value, final Callback callback) {
-        if (key == null || value == null) {
-            throw new IllegalArgumentException("Trying to put a null key or value");
+        if (key == null) {
+            throw new IllegalArgumentException("Trying to put a null key");
         }
 
-        // Skip saveToDisk if value is the same
-        if (mData.get(key) != null && mData.get(key).equals(value)) {
+        // Skip saveToDisk if value is either null or the same as the saved one
+        if (value == null || (mData.get(key) != null && mData.get(key).equals(value))) {
             // Fire the callback
             if (callback != null) {
                 callback.apply(true);
