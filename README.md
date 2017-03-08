@@ -16,8 +16,12 @@ Note that since writes are asynchronous, an in-flight write may be lost if the a
 
 ## About Remember2
 
-This is an update of the [original Remember library](https://github.com/tumblr/remember) with some extra features:
+This is an update on top of mlapadula's Remember2 (https://github.com/mlapadula/remember2):
 
+* Allow null but will skip the save
+* If save value is the same as the one in memory, skip the save
+
+Update from mlapadula's Remember2 from [original Remember library](https://github.com/tumblr/remember) with some extra features:
 * Namespacing by file, so you can effectively have different "tables"
 * Allowing you to store/retrieve JSON easily
 * Allowing you to query the data store. (In the easiest, simplest way possible: iterate over the values and look for things that match a given function)
@@ -42,7 +46,7 @@ And add Remember to your dependencies:
 
 ```groovy
 dependencies {
-    compile (group: 'com.mlapadula', name: 'remember2', version: '2.0.0', ext: 'aar')
+    compile 'com.allenchankl:remember:2.0.2'
 }
 ```
 
