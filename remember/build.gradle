@@ -28,7 +28,7 @@ apply plugin: 'com.github.dcendents.android-maven'
 
 def versionMajor = 2
 def versionMinor = 0
-def versionPatch = 1
+def versionPatch = 2
 def versionBuild = 0
 
 def version_code = versionMajor * 10000 + versionMinor * 1000 + versionPatch * 100 + versionBuild
