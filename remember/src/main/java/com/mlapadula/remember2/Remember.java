@@ -1,5 +1,6 @@
 package com.mlapadula.remember2;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -60,6 +61,12 @@ public class Remember {
      * Our data. This is a write-through cache of the data we're storing in SharedPreferences.
      */
     private ConcurrentMap<String, Object> mData;
+    private ConcurrentMap<String, Object> mChainData;
+
+    /**
+     * To enable chain value update, update all values in single call if value is true
+     */
+    private boolean isChain = false;
 
     /**
      * Constructor.
@@ -69,7 +76,8 @@ public class Remember {
 
         // Read from shared prefs
         mSharedPreferences = context.getSharedPreferences(sharedPrefsName, Context.MODE_PRIVATE);
-        mData = new ConcurrentHashMap<String, Object>();
+        mData = new ConcurrentHashMap<>();
+        mChainData = new ConcurrentHashMap<>();
 
         // Remove the item if it is null, for backward compatible
         for (Map.Entry<String, ?> entry : mSharedPreferences.getAll().entrySet())
@@ -106,9 +114,57 @@ public class Remember {
 
         // Else, create a new instance and cache it
         Remember remember = new Remember(context, sharedPrefsName);
-        WeakReference<Remember> weakRef = new WeakReference<Remember>(remember);
+        WeakReference<Remember> weakRef = new WeakReference<>(remember);
         sCachedInstances.put(sharedPrefsName, weakRef);
+        remember.isChain = false;
         return remember;
+    }
+
+    /**
+     * start to build a chain of values to save to disk in single call
+     */
+    public Remember build() {
+        isChain = true;
+        return this;
+    }
+
+    /**
+     * Save key value pairs to disk (synchronously) in a single call
+     */
+    public boolean commit() {
+        isChain = false;
+        String key;
+        Object value;
+        Map<String, Object> newMapData = mChainData;
+        for (Map.Entry<String, ?> entry : mChainData.entrySet()) {
+            if (entry.getValue() != null) {
+                key = entry.getKey();
+                value = entry.getValue();
+                // Skip saveToDisk if value is either null or the same as the saved one
+                if (value != null && (mData.get(value) == null || !mData.get(key).equals(value))) {
+                    // Put it in memory
+                    mData.put(key, value);
+                } else {
+                    newMapData.remove(key);
+                }
+            }
+        }
+
+        mChainData.clear();
+        return newMapData.size() <= 0 || saveBuildValuesToDisk(newMapData);
+    }
+
+    /**
+     * Save key value pairs to disk (asynchronously) in a single call
+     * @param callback the callback to fire. The callback will be fired on the UI thread,
+     *                 and will be passed 'true' if successful, 'false' if not.
+     */
+    public void apply(Callback callback) {
+        isChain = false;
+        if (mChainData.size() > 0) {
+            saveAsync(mChainData, callback);
+            mChainData.clear();
+        }
     }
 
     /**
@@ -116,7 +172,7 @@ public class Remember {
      *
      * @return true if the save-to-disk operation succeeded
      */
-    private boolean saveToDisk(final String key, final Object value) {
+    public boolean saveToDisk(final String key, final Object value) {
         boolean success = false;
         synchronized (SHARED_PREFS_LOCK) {
             // Save it to disk
@@ -150,6 +206,103 @@ public class Remember {
     }
 
     /**
+     * Saves all given (key,value) pairs to disk in a single call.
+     *
+     * @return true if the save-to-disk operation succeeded
+     */
+    private boolean saveBuildValuesToDisk(final Map<String, Object> map) {
+        boolean success = false;
+        synchronized (SHARED_PREFS_LOCK) {
+            // Save it to disk
+            SharedPreferences.Editor editor = mSharedPreferences.edit();
+            boolean didPut = false;
+            String key;
+            Object value;
+
+            for (Map.Entry<String, ?> entry : map.entrySet()) {
+                if (entry.getValue() != null) {
+
+                    key = entry.getKey();
+                    value = entry.getValue();
+
+                    if (value instanceof Float) {
+                        editor.putFloat(key, (Float) value);
+                        didPut = true;
+                    } else if (value instanceof Integer) {
+                        editor.putInt(key, (Integer) value);
+                        didPut = true;
+                    } else if (value instanceof Long) {
+                        editor.putLong(key, (Long) value);
+                        didPut = true;
+                    } else if (value instanceof String) {
+                        editor.putString(key, (String) value);
+                        didPut = true;
+                    } else if (value instanceof Boolean) {
+                        editor.putBoolean(key, (Boolean) value);
+                        didPut = true;
+                    }
+                }
+            }
+
+            if (didPut) {
+                success = editor.commit();
+            }
+        }
+
+        return success;
+    }
+
+    /**
+     * Saves the given (key,value) pair to memory and (asynchronously) to disk.
+     *
+     * @param map      the map of keys and values
+     * @param callback the callback to fire. The callback will be fired on the UI thread,
+     *                 and will be passed 'true' if successful, 'false' if not.
+     * @return this instance
+     */
+    @SuppressLint("StaticFieldLeak")
+    private <T> Remember saveAsync(ConcurrentMap<String, Object> map, final Callback callback) {
+        if (map == null || map.size() == 0) {
+            throw new IllegalArgumentException("Trying to put a null key");
+        }
+
+        final Map<String, Object> newMap = map;
+        String key;
+        Object value;
+
+        for (Map.Entry<String, ?> entry : map.entrySet()) {
+            if (entry.getValue() != null) {
+                key = entry.getKey();
+                value = entry.getValue();
+
+                // Skip saveToDisk if value is either null or the same as the saved one
+                if (value != null && (mData.get(value) == null || !mData.get(key).equals(value))) {
+                    // Put it in memory
+                    mData.put(key, value);
+                }
+            }
+        }
+
+        // Save it to disk
+        new AsyncTask<Void, Void, Boolean>() {
+            @Override
+            protected Boolean doInBackground(Void... params) {
+                return saveBuildValuesToDisk(newMap);
+            }
+
+            @Override
+            protected void onPostExecute(Boolean success) {
+                // Fire the callback
+                if (callback != null) {
+                    callback.apply(success);
+                }
+            }
+        }.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+        return this;
+    }
+
+    /**
      * Saves the given (key,value) pair to memory and (asynchronously) to disk.
      *
      * @param key      the key
@@ -159,9 +312,17 @@ public class Remember {
      *                 and will be passed 'true' if successful, 'false' if not.
      * @return this instance
      */
+    @SuppressLint("StaticFieldLeak")
     private <T> Remember saveAsync(final String key, final T value, final Callback callback) {
         if (key == null) {
             throw new IllegalArgumentException("Trying to put a null key");
+        }
+
+        if (isChain) {
+            if (value != null && (mData.get(key) == null || !mData.get(key).equals(value))) {
+                mChainData.put(key, value);
+            }
+            return this;
         }
 
         // Skip saveToDisk if value is either null or the same as the saved one
@@ -241,6 +402,18 @@ public class Remember {
      * Clears all data from this store.
      */
     public void clear() {
+        synchronized (SHARED_PREFS_LOCK) {
+            mData.clear();
+            SharedPreferences.Editor editor = mSharedPreferences.edit();
+            editor.clear();
+            editor.commit();
+        }
+    }
+
+    /**
+     * Clears all data from this store.
+     */
+    public void clearAsync() {
         clear(null);
     }
 
@@ -250,6 +423,7 @@ public class Remember {
      * @param callback the callback to fire when done. The callback will be fired on the UI thread,
      *                 and will be passed 'true' if successful, 'false' if not.
      */
+    @SuppressLint("StaticFieldLeak")
     public void clear(final Callback callback) {
         mData.clear();
         new AsyncTask<Void, Void, Boolean>() {
@@ -284,6 +458,7 @@ public class Remember {
      * @param callback the callback to fire when done. The callback will be fired on the UI thread,
      *                 and will be passed 'true' if successful, 'false' if not.
      */
+    @SuppressLint("StaticFieldLeak")
     public void remove(final String key, final Callback callback) {
         mData.remove(key);
         new AsyncTask<Void, Void, Boolean>() {

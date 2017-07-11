@@ -67,6 +67,24 @@ myRemember.putString("some key", "some value");
 String value = myRemember.getString("some key", "");
 ```
 
+Chain multiple values and apply in a single editor.apply call:
+
+```java
+myRemember.build().putString("some key", "some value")
+    .putFloat("some key", 12345L)
+    .putInt("some key", 1000)
+    .apply();
+```
+
+Replace apply to commit to save values in non-async way
+
+```java
+myRemember.build().putString("some key", "some value")
+    .putFloat("some key", 12345L)
+    .putInt("some key", 1000)
+    .commit();
+```
+
 More examples are available in the [sample app](https://github.com/mlapadula/remember2/blob/master/sample-app/src/main/java/com/mlapadula/remembersample/RememberSample.java#L56)
 
 ## Javadoc

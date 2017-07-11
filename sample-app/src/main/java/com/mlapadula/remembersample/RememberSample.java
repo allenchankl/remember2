@@ -19,7 +19,7 @@ import java.util.Set;
 /**
  * A simple activity that counts how many times it's been resumed via {@link Remember}.
  */
-public class RememberSample extends AppCompatActivity {
+public class RememberSample extends AppCompatActivity implements Remember.Callback{
 
     private static final String TAG = RememberSample.class.getSimpleName();
 
@@ -54,15 +54,87 @@ public class RememberSample extends AppCompatActivity {
         getRemember(this).putInt("counter", howMany + 1);
 
         // Some other simple examples:
-        getRemember(this).putFloat("test-float", 123.0f);
-        getRemember(this).putString("test-string", "hello world!");
+        getRemember(this).putFloat("test-float", 1111.0f);
+        getRemember(this).putString("test-string", "1. hello world!");
         getRemember(this).putBoolean("test-boolean", true);
-        getRemember(this).putLong("test-long", 54321L);
+        getRemember(this).putLong("test-long", 1_111_111L);
 
         Log.d(TAG, "put float: " + getRemember(this).getFloat("test-float", 0f));
         Log.d(TAG, "put string: " + getRemember(this).getString("test-string", ""));
         Log.d(TAG, "put boolean: " + getRemember(this).getBoolean("test-boolean", false));
         Log.d(TAG, "put long: " + getRemember(this).getLong("test-long", 0L));
+
+        delay(1000);
+
+        Log.d(TAG, "clean up");
+        getRemember(this).clear();
+
+        Log.d(TAG, "Build and commit ->");
+        getRemember(this).build()
+                .putFloat("test-float", 2222.0f)
+                .putString("test-string", "2. hello world!")
+                .putBoolean("test-boolean", false)
+                .putLong("test-long", 2_222_222L)
+                .commit();
+
+        Log.d(TAG, "put float: " + getRemember(this).getFloat("test-float", 0f));
+        Log.d(TAG, "put string: " + getRemember(this).getString("test-string", ""));
+        Log.d(TAG, "put boolean: " + getRemember(this).getBoolean("test-boolean", false));
+        Log.d(TAG, "put long: " + getRemember(this).getLong("test-long", 0L));
+
+        delay(1000);
+
+        Log.d(TAG, "clean up");
+        getRemember(this).clear();
+
+        Log.d(TAG, "Build and apply ->");
+        getRemember(this).build()
+                .putFloat("test-float", 3333.0f)
+                .putString("test-string", "3. hello world!")
+                .putBoolean("test-boolean", true)
+                .putLong("test-long", 3_333_333L)
+                .apply(this);
+
+        Log.d(TAG, "put float: " + getRemember(this).getFloat("test-float", 0f));
+        Log.d(TAG, "put string: " + getRemember(this).getString("test-string", ""));
+        Log.d(TAG, "put boolean: " + getRemember(this).getBoolean("test-boolean", false));
+        Log.d(TAG, "put long: " + getRemember(this).getLong("test-long", 0L));
+
+        Log.d(TAG, "clean up");
+        getRemember(this).clear();
+
+        delay(1000);
+
+        Log.d(TAG, "Pass null without build->");
+        getRemember(this).putString("test-string", null);
+
+        Log.d(TAG, "put string: " + getRemember(this).getString("test-string", "empty"));
+
+        delay(1000);
+
+        Log.d(TAG, "clean up");
+        getRemember(this).clear();
+
+        Log.d(TAG, "Pass null with build and apply->");
+        getRemember(this).build()
+                .putString("test-string", null)
+                .apply(this);
+
+        Log.d(TAG, "put string: " + getRemember(this).getString("test-string", "empty"));
+
+        delay(1000);
+
+        Log.d(TAG, "clean up");
+        getRemember(this).clear();
+
+        Log.d(TAG, "Pass null with build and commit->");
+        getRemember(this).build()
+                .putString("test-string", null)
+                .commit();
+
+        Log.d(TAG, "put string: " + getRemember(this).getString("test-string", "empty"));
+
+        delay(1000);
 
         // JSON object example, with callback:
         JSONObject jsonObj = new JSONObject();
@@ -99,6 +171,22 @@ public class RememberSample extends AppCompatActivity {
             }
         });
         Log.d(TAG, "keys with numeric values >0: " + matchingKeys);
+    }
+
+    private void delay(int time) {
+        try
+        {
+            Thread.sleep(time);
+        }
+        catch(InterruptedException ex)
+        {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Override
+    public void apply(Boolean success) {
+        Log.d(TAG, "Callback success: " + success);
     }
 
     @Override
