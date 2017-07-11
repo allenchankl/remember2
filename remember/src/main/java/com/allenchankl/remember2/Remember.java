@@ -1,4 +1,4 @@
-package com.mlapadula.remember2;
+package com.allenchankl.remember2;
 
 import android.annotation.SuppressLint;
 import android.content.Context;

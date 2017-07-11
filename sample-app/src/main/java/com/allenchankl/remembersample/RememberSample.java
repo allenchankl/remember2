@@ -1,4 +1,4 @@
-package com.mlapadula.remembersample;
+package com.allenchankl.remembersample;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -8,7 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 
-import com.mlapadula.remember2.Remember;
+import com.allenchankl.remember2.Remember;
 
 import org.json.JSONArray;
 import org.json.JSONException;
