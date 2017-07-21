@@ -1,6 +1,7 @@
 package com.allenchankl.remembersample;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -45,6 +46,7 @@ public class RememberSample extends AppCompatActivity implements Remember.Callba
         super.onResume();
 
         int howMany = getRemember(this).getInt("counter", 1);
+        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         TextView textView = (TextView) findViewById(R.id.text_view);
         String testString = getApplicationContext().getResources().getQuantityString(R.plurals.youve_resumed, howMany,
@@ -82,6 +84,12 @@ public class RememberSample extends AppCompatActivity implements Remember.Callba
         Log.d(TAG, "put boolean: " + getRemember(this).getBoolean("test-boolean", false));
         Log.d(TAG, "put long: " + getRemember(this).getLong("test-long", 0L));
 
+        Log.d(TAG, "(Disk) put float: " + sharedPreferences.getFloat("test-float", 0f));
+        Log.d(TAG, "(Disk) put string: " + sharedPreferences.getString("test-string", ""));
+        Log.d(TAG, "(Disk) put boolean: " + sharedPreferences.getBoolean("test-boolean", false));
+        Log.d(TAG, "(Disk) put long: " + sharedPreferences.getLong("test-long", 0L));
+
+
         delay(1000);
 
         Log.d(TAG, "clean up");
@@ -99,6 +107,11 @@ public class RememberSample extends AppCompatActivity implements Remember.Callba
         Log.d(TAG, "put string: " + getRemember(this).getString("test-string", ""));
         Log.d(TAG, "put boolean: " + getRemember(this).getBoolean("test-boolean", false));
         Log.d(TAG, "put long: " + getRemember(this).getLong("test-long", 0L));
+
+        Log.d(TAG, "(Disk) put float: " + sharedPreferences.getFloat("test-float", 0f));
+        Log.d(TAG, "(Disk) put string: " + sharedPreferences.getString("test-string", ""));
+        Log.d(TAG, "(Disk) put boolean: " + sharedPreferences.getBoolean("test-boolean", false));
+        Log.d(TAG, "(Disk) put long: " + sharedPreferences.getLong("test-long", 0L));
 
         Log.d(TAG, "clean up");
         getRemember(this).clear();

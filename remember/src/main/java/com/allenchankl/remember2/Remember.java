@@ -13,6 +13,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -135,7 +136,9 @@ public class Remember {
         isChain = false;
         String key;
         Object value;
-        Map<String, Object> newMapData = mChainData;
+        Map<String, Object> newMapData = new HashMap<>();
+        newMapData.putAll(mChainData);
+
         for (Map.Entry<String, ?> entry : mChainData.entrySet()) {
             if (entry.getValue() != null) {
                 key = entry.getKey();
@@ -156,14 +159,23 @@ public class Remember {
 
     /**
      * Save key value pairs to disk (asynchronously) in a single call
+     */
+    public void apply() {
+        apply(null);
+    }
+
+    /**
+     * Save key value pairs to disk (asynchronously) in a single call
      * @param callback the callback to fire. The callback will be fired on the UI thread,
      *                 and will be passed 'true' if successful, 'false' if not.
      */
     public void apply(Callback callback) {
         isChain = false;
         if (mChainData.size() > 0) {
-            saveAsync(mChainData, callback);
+            Map<String, Object> newMap = new HashMap<>();
+            newMap.putAll(mChainData);
             mChainData.clear();
+            saveAsync(newMap, callback);
         }
     }
 
@@ -261,12 +273,11 @@ public class Remember {
      * @return this instance
      */
     @SuppressLint("StaticFieldLeak")
-    private <T> Remember saveAsync(ConcurrentMap<String, Object> map, final Callback callback) {
+    private <T> Remember saveAsync(final Map<String, Object> map, final Callback callback) {
         if (map == null || map.size() == 0) {
             throw new IllegalArgumentException("Trying to put a null key");
         }
 
-        final Map<String, Object> newMap = map;
         String key;
         Object value;
 
@@ -287,7 +298,7 @@ public class Remember {
         new AsyncTask<Void, Void, Boolean>() {
             @Override
             protected Boolean doInBackground(Void... params) {
-                return saveBuildValuesToDisk(newMap);
+                return saveBuildValuesToDisk(map);
             }
 
             @Override
